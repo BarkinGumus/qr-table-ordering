@@ -12,8 +12,9 @@ on PHP 8.3+ and MariaDB/MySQL.
 
 ## What works today
 
-- Staff login at `/login` with throttling (5 attempts a minute), CSRF
-  protection and a fresh session ID at login.
+- One login page, `/login`, for every role. Throttled per email + IP (5
+  attempts a minute) and per IP (20 a minute), with CSRF protection and a
+  fresh session ID at login.
 - Six roles: platform admin, owner, manager, waiter, kitchen, bar.
 - Admin panel at `/admin` for owners, managers and the platform admin. It is
   empty until the next steps add tables, menu and staff screens.
@@ -67,6 +68,8 @@ every account is `password`.
 | `kitchen@demo.test` | Kitchen | `/staff` |
 | `bar@demo.test` | Bar | `/staff` |
 | `admin@platform.test` | Platform admin | `/admin` |
+
+Everyone logs in at `/login`; the admin panel has no login page of its own.
 
 The demo seeder refuses to run when `APP_ENV=production`.
 
@@ -136,10 +139,18 @@ Never commit `.env`.
 
 ```sh
 cp .env.example .env    # then edit as above
-docker compose up -d --build
-docker compose exec app php artisan key:generate --force
+
+# Generate the encryption key BEFORE the first start and paste the printed
+# value into .env as APP_KEY=... (the container reads it from there).
+docker compose build app
+docker compose run --rm --no-deps --entrypoint php app artisan key:generate --show
+
+docker compose up -d
 docker compose exec app php artisan platform:create-admin you@example.com
 ```
+
+The container refuses to start while `APP_KEY` is empty. After changing
+`.env`, run `docker compose up -d` again so the new values are picked up.
 
 The site listens on port 8080 (`APP_PORT` in `.env` changes it). Put it
 behind a reverse proxy that terminates HTTPS, such as Caddy or nginx with

@@ -10,7 +10,11 @@ Route::get('/locale/{locale}', LocaleController::class)->name('locale');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
-    Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+    // The controller limits attempts per email + IP. This second limit caps
+    // one IP trying many different emails.
+    Route::post('/login', [LoginController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('login.store');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');

@@ -104,6 +104,25 @@ class LoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_a_platform_admin_logs_in_on_the_same_page_and_lands_on_the_admin_panel(): void
+    {
+        $admin = User::factory()->platformAdmin()->create();
+
+        $this->post('/login', ['email' => $admin->email, 'password' => 'password'])
+            ->assertRedirect('/admin');
+
+        $this->get('/admin')->assertOk();
+    }
+
+    public function test_one_ip_cannot_try_an_unlimited_number_of_emails(): void
+    {
+        for ($i = 0; $i < 20; $i++) {
+            $this->post('/login', ['email' => "user{$i}@example.com", 'password' => 'wrong'])->assertStatus(302);
+        }
+
+        $this->post('/login', ['email' => 'user21@example.com', 'password' => 'wrong'])->assertStatus(429);
+    }
+
     public function test_logout_ends_the_session(): void
     {
         $user = User::factory()->create();

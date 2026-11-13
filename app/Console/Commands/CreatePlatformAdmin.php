@@ -42,7 +42,7 @@ class CreatePlatformAdmin extends Command
             'role' => Role::PlatformAdmin,
         ]);
 
-        $this->info('Platform admin created. Log in at /admin/login.');
+        $this->info('Platform admin created. Log in at /login.');
 
         return self::SUCCESS;
     }

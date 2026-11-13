@@ -16,7 +16,9 @@ class RoleAccessTest extends TestCase
     public function test_guests_are_sent_to_the_login_page(): void
     {
         $this->get('/staff')->assertRedirect(route('login'));
-        $this->get('/admin')->assertRedirect('/admin/login');
+        // The admin panel has no login page of its own.
+        $this->get('/admin')->assertRedirect(route('login'));
+        $this->get('/admin/login')->assertNotFound();
     }
 
     public function test_every_restaurant_role_can_open_the_staff_screen(): void
@@ -58,6 +60,14 @@ class RoleAccessTest extends TestCase
         $this->actingAs($user)->get('/staff')->assertOk();
 
         $this->assertSame($user->restaurant_id, app(Tenant::class)->id());
+    }
+
+    public function test_the_admin_panel_follows_the_chosen_language(): void
+    {
+        $owner = User::factory()->role(Role::Owner)->create();
+
+        $this->actingAs($owner)->get('/admin', ['Accept-Language' => 'en'])->assertOk()->assertSee('lang="en"', false);
+        $this->actingAs($owner)->get('/admin', ['Accept-Language' => 'tr'])->assertOk()->assertSee('lang="tr"', false);
     }
 
     public function test_security_headers_are_sent(): void
