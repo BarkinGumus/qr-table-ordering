@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * product_name and unit_price are copied when the order is placed, so a
- * later rename or price change never rewrites an old bill.
+ * later rename or price change never rewrites an old bill. product_id may
+ * be NULL when the product row no longer exists.
  */
 #[Fillable([
     'order_id', 'product_id', 'product_name', 'unit_price', 'quantity',

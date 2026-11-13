@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One party's visit to a table, from first scan to closed bill.
+ *
+ * live_table_id is computed by the database from status; never write it.
  */
 #[Fillable([
     'dining_table_id', 'status', 'ordering_blocked', 'opened_at',
@@ -34,15 +36,6 @@ class TableSession extends Model
             'confirmed_at' => 'datetime',
             'closed_at' => 'datetime',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        // Keep live_table_id in step with status on every save, so the
-        // unique index can enforce "one live session per table".
-        static::saving(function (TableSession $session): void {
-            $session->live_table_id = $session->status->isLive() ? $session->dining_table_id : null;
-        });
     }
 
     public function isLive(): bool

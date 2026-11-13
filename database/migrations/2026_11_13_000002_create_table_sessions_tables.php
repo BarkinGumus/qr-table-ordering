@@ -12,11 +12,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('restaurant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('dining_table_id')->constrained()->cascadeOnDelete();
-            // Equals dining_table_id while the session is pending or open,
-            // NULL afterwards. The unique index then guarantees at most one
-            // live session per table, even if two phones scan at once.
-            $table->unsignedBigInteger('live_table_id')->nullable()->unique();
             $table->string('status', 20)->default('pending');
+            // Computed by the database: dining_table_id while the session is
+            // pending or open, NULL afterwards. The unique index then allows
+            // at most one live session per table, however the row is written
+            // (model, bulk update or raw SQL).
+            $table->unsignedBigInteger('live_table_id')
+                ->storedAs("CASE WHEN status IN ('pending', 'open') THEN dining_table_id END")
+                ->nullable()
+                ->unique();
             $table->boolean('ordering_blocked')->default(false);
             $table->timestamp('opened_at')->useCurrent();
             $table->foreignId('confirmed_by')->nullable()->constrained('users')->nullOnDelete();
