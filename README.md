@@ -7,9 +7,9 @@ bar and waiter screens.
 One deployment serves many restaurants. Built with Laravel 13 and Filament 5
 on PHP 8.3+ and MariaDB/MySQL.
 
-> **Status: step 2 of 13 (database).** Login, roles, restaurant isolation and
-> the full database schema are in place. The screens for tables, QR codes, the
-> menu and ordering arrive in the next steps.
+> **Status: step 3 of 13 (tables and QR codes).** Managers can add tables,
+> print their QR codes and renew a code. Scanning a code shows which table it
+> is; the menu and ordering arrive in the next steps.
 
 ## What works today
 
@@ -17,8 +17,15 @@ on PHP 8.3+ and MariaDB/MySQL.
   attempts a minute) and per IP (20 a minute), with CSRF protection and a
   fresh session ID at login.
 - Six roles: platform admin, owner, manager, waiter, kitchen, bar.
-- Admin panel at `/admin` for owners, managers and the platform admin. It is
-  empty until the next steps add tables, menu and staff screens.
+- Admin panel at `/admin` for owners, managers and the platform admin.
+- Tables at `/admin/dining-tables` (owner and manager): add, rename, set
+  area and seats, deactivate. A table that has ever been used cannot be
+  deleted, only deactivated, so its order history is kept.
+- QR codes: each table has a random 128-bit token. "Print QR" opens an A4
+  sheet (12 codes a page) to print or save as PDF. "Renew QR" replaces the
+  token, so the old printed code stops working at once.
+- Scanning: `/t/<token>` shows the restaurant and table. Unknown, renewed,
+  deactivated and suspended codes all show the same "not valid" page.
 - Staff landing page at `/staff` (a placeholder for the order boards).
 - Restaurant isolation: every restaurant-owned model is filtered to the
   current restaurant, and fails loudly if no restaurant is set.
@@ -144,6 +151,13 @@ Production has no demo accounts. Create the platform admin once:
 php artisan platform:create-admin you@example.com
 ```
 
+### Print QR codes from the real address
+
+A QR code contains the address the print page was opened from. Codes printed
+while you browse `http://localhost:8000` point at localhost and will not work
+on a guest's phone. Print the codes you put on tables from the production
+`https://` address.
+
 ### Settings to change in `.env` for production
 
 | Key | Value |
@@ -189,8 +203,8 @@ A tested guide comes with the operations step.
 ## Roadmap
 
 1. Foundation (done)
-2. **Database: tables, menu, sessions, orders, demo data** (this step)
-3. Tables and QR codes
+2. Database: tables, menu, sessions, orders, demo data (done)
+3. **Tables and QR codes** (this step)
 4. Menu admin
 5. Guest flow: scan, menu, cart, order, status
 6. Table session rules
