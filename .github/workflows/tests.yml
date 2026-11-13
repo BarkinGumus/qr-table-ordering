@@ -32,3 +32,48 @@ jobs:
 
       - name: Run tests
         run: php artisan test
+
+  # The same suite on MariaDB, the database used in production, to catch
+  # differences from SQLite (unique indexes, JSON columns, foreign keys).
+  mariadb:
+    runs-on: ubuntu-latest
+    name: PHP 8.3 on MariaDB
+    services:
+      db:
+        image: mariadb:10.11
+        env:
+          MARIADB_DATABASE: qr_test
+          MARIADB_USER: qr
+          MARIADB_PASSWORD: ci-only-password
+          MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: qr_test
+      DB_USERNAME: qr
+      DB_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, zip, gd
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run tests
+        run: php artisan test
