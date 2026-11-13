@@ -32,7 +32,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('restaurant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_id')->constrained();
+            // NULL once the product row is gone for good (its category or its
+            // restaurant was deleted). The line itself stays: name and price are
+            // copied below, so the bill is still complete.
+            $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
             $table->string('product_name', 150);         // copied at order time
             $table->decimal('unit_price', 10, 2);        // copied at order time
             $table->unsignedSmallInteger('quantity');

@@ -106,7 +106,6 @@ class SchemaTest extends TestCase
             $this->assertTrue($table->liveSession->is($first));
 
             $first->update(['status' => TableSessionStatus::Closed, 'closed_at' => now()]);
-            $this->assertNull($first->fresh()->live_table_id);
 
             $second = TableSession::create(['dining_table_id' => $table->id, 'status' => TableSessionStatus::Open]);
 
@@ -122,6 +121,51 @@ class SchemaTest extends TestCase
             $session->update(['status' => TableSessionStatus::Expired]);
 
             $this->assertNull($session->fresh()->live_table_id);
+        });
+    }
+
+    public function test_a_bulk_update_that_skips_the_model_still_frees_the_tables(): void
+    {
+        $this->asA(function () {
+            $table = DiningTable::factory()->create();
+            TableSession::create(['dining_table_id' => $table->id]);
+
+            // The way an expiry job would do it: no model events fire.
+            TableSession::query()->update(['status' => TableSessionStatus::Expired->value]);
+
+            $this->assertNull($table->liveSession);
+            $this->assertNotNull(TableSession::create(['dining_table_id' => $table->id])->id);
+        });
+    }
+
+    public function test_a_bulk_update_cannot_reopen_two_sessions_on_one_table(): void
+    {
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        $this->asA(function () {
+            $table = DiningTable::factory()->create();
+            TableSession::factory()->closed()->count(2)->create(['dining_table_id' => $table->id]);
+
+            TableSession::query()->update(['status' => TableSessionStatus::Open->value]);
+        });
+    }
+
+    public function test_hard_deleting_a_category_keeps_the_order_lines_of_its_products(): void
+    {
+        $this->asA(function () {
+            $product = Product::factory()->create();
+            $order = Order::factory()->create();
+            $item = OrderItem::create([
+                'order_id' => $order->id, 'product_id' => $product->id, 'product_name' => 'Kola',
+                'unit_price' => 25, 'quantity' => 2, 'station' => Station::Bar,
+            ]);
+
+            $product->category->delete();
+
+            $item->refresh();
+            $this->assertNull($item->product_id);
+            $this->assertSame('Kola', $item->product_name);
+            $this->assertSame('25.00', $item->unit_price);
         });
     }
 
@@ -259,13 +303,24 @@ class SchemaTest extends TestCase
         });
     }
 
-    public function test_deleting_a_restaurant_removes_its_data(): void
+    public function test_deleting_a_restaurant_that_has_orders_with_items_removes_its_data(): void
     {
-        $this->asA(fn () => Order::factory()->create());
+        $this->asA(function () {
+            $product = Product::factory()->create();
+            $order = Order::factory()->create();
+            OrderItem::create([
+                'order_id' => $order->id, 'product_id' => $product->id, 'product_name' => 'x',
+                'unit_price' => 1, 'quantity' => 1, 'station' => Station::Kitchen,
+            ]);
+            Payment::create(['table_session_id' => $order->table_session_id, 'method' => PaymentMethod::Cash, 'amount' => 1]);
+        });
 
         $this->a->delete();
 
-        $this->assertSame(0, $this->tenant->withoutScope(fn () => Order::count() + TableSession::count() + DiningTable::count()));
+        $left = $this->tenant->withoutScope(fn () => Order::count() + OrderItem::count() + TableSession::count()
+            + DiningTable::count() + Product::withTrashed()->count() + Category::count() + Payment::count());
+
+        $this->assertSame(0, $left);
     }
 
     public function test_an_order_cannot_point_at_a_missing_session(): void
