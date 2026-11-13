@@ -7,8 +7,9 @@ bar and waiter screens.
 One deployment serves many restaurants. Built with Laravel 13 and Filament 5
 on PHP 8.3+ and MariaDB/MySQL.
 
-> **Status: step 1 of 13 (foundation).** Login, roles and restaurant isolation
-> work. Tables, QR codes, the menu and ordering arrive in the next steps.
+> **Status: step 2 of 13 (database).** Login, roles, restaurant isolation and
+> the full database schema are in place. The screens for tables, QR codes, the
+> menu and ordering arrive in the next steps.
 
 ## What works today
 
@@ -23,6 +24,24 @@ on PHP 8.3+ and MariaDB/MySQL.
   current restaurant, and fails loudly if no restaurant is set.
 - Turkish and English interface, following the browser language, with a
   switch in the header.
+
+## Data model
+
+Every table below has a `restaurant_id` and is filtered by it automatically.
+
+| Table | Holds |
+| --- | --- |
+| `dining_tables` | A physical table: label, area, and the random `qr_token` that is the only thing in its QR link. |
+| `table_sessions` | One party's visit, from first scan to closed bill. A table has at most one live (pending or open) session; the database enforces it. |
+| `session_guests` | One row per phone in a session. Stores a hash of the phone's cookie key, nothing personal. |
+| `categories` | Menu sections, with a station (kitchen or bar) and a name per language. |
+| `products` | Menu items: name and description per language, price, sold-out switch. Soft-deleted so old bills stay readable. |
+| `orders` | One submitted cart. Carries an idempotency key so a double tap cannot create two orders. |
+| `order_items` | The lines of an order, with name and price copied at order time, a station and their own status. |
+| `payments` | How a session's bill was settled (cash or card terminal). |
+
+Preparation status lives on orders and items; payment lives on the table
+session. An order is never "paid" by itself.
 
 ## Run it locally
 
@@ -57,8 +76,9 @@ Open <http://localhost:8000>.
 
 ### Demo accounts
 
-Created by `php artisan migrate --seed` outside production. The password for
-every account is `password`.
+Created by `php artisan migrate --seed` outside production, together with a
+demo restaurant ("Demo Lokanta") that has 12 tables and an 18-item menu in
+Turkish and English. The password for every account is `password`.
 
 | Email | Role | Lands on |
 | --- | --- | --- |
@@ -80,7 +100,8 @@ php artisan test
 ```
 
 Tests run on an in-memory SQLite database and need no setup. GitHub Actions
-runs them on PHP 8.3 and 8.4 for every pull request.
+runs them on PHP 8.3 and 8.4 for every pull request, and once more against
+MariaDB.
 
 ## Project layout
 
@@ -167,8 +188,8 @@ A tested guide comes with the operations step.
 
 ## Roadmap
 
-1. **Foundation** (this step)
-2. Migrations and seed data for tables, menu and orders
+1. Foundation (done)
+2. **Database: tables, menu, sessions, orders, demo data** (this step)
 3. Tables and QR codes
 4. Menu admin
 5. Guest flow: scan, menu, cart, order, status
