@@ -68,10 +68,14 @@ class DiningTable extends Model
         });
     }
 
-    /** The address encoded in this table's QR code. */
+    /**
+     * The address encoded in this table's QR code. Built from APP_URL, not
+     * from the current request, so a printed code is correct no matter which
+     * address, proxy or scheme the print page happened to be opened through.
+     */
     public function qrUrl(): string
     {
-        return route('table.scan', ['token' => $this->qr_token]);
+        return rtrim((string) config('app.url'), '/').route('table.scan', ['token' => $this->qr_token], absolute: false);
     }
 
     /** A table with history cannot be deleted; that would erase its orders. */

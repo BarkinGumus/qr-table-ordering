@@ -19,7 +19,9 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:80"
+      # Bound to localhost: only the HTTPS reverse proxy on this server can
+      # reach it, which is what makes TRUSTED_PROXIES=* safe here.
+      - "127.0.0.1:${APP_PORT:-8080}:80"
     depends_on:
       - app
     volumes:

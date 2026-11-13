@@ -41,3 +41,13 @@ restaurant-owned model throws.
 Rule: restaurant screens (tables, menu, staff) are hidden from the platform
 admin. Platform screens (restaurants list) use `Tenant::withoutScope()`
 explicitly.
+
+## The scan limit must not lock out a whole venue (step 5)
+
+`/t/<token>` is limited to 30 requests a minute per IP. Guests on a venue's
+Wi-Fi share one IP. Once that address serves the menu and status refreshes,
+one busy table could block the room.
+
+Rule: only the first token lookup (no valid guest cookie yet) counts against
+the per-IP limit. Requests that carry a valid guest cookie are limited per
+guest key instead. Add a test with many guests behind one IP.

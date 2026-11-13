@@ -227,13 +227,56 @@ class TablesAndQrTest extends TestCase
         $this->actingAs(User::factory()->platformAdmin()->create())->get('/print/qr-codes')->assertForbidden();
     }
 
-    public function test_the_qr_encodes_exactly_the_tables_link(): void
+    public function test_the_qr_link_is_built_from_app_url_not_from_the_request(): void
     {
+        config(['app.url' => 'https://siparis.example.com/']);
         $table = $this->tableOf($this->a);
 
-        $this->assertSame(url('/t/'.$table->qr_token), $table->qrUrl());
-        $this->assertStringNotContainsString((string) $this->a->id.'/', parse_url($table->qrUrl(), PHP_URL_PATH));
+        // Opened through some other address, over plain http.
+        $this->actingAs($this->owner)->get('http://10.0.0.5:8080/print/qr-codes')->assertOk();
+
+        $this->assertSame('https://siparis.example.com/t/'.$table->qr_token, $table->qrUrl());
         $this->assertStringStartsWith('<svg', QrCode::svg($table->qrUrl()));
+    }
+
+    public function test_printing_a_ticked_selection_opens_the_sheet_for_exactly_those_tables(): void
+    {
+        $first = $this->tableOf($this->a, ['label' => 'S1']);
+        $second = $this->tableOf($this->a, ['label' => 'S2']);
+        $this->tableOf($this->a, ['label' => 'S3']);
+        $this->actingAsOwner();
+
+        Livewire::test(ListDiningTables::class)
+            ->callTableBulkAction('printSelected', [$first, $second])
+            ->assertRedirect(route('print.qr-codes', ['tables' => "{$first->id},{$second->id}"]));
+
+        $this->get(route('print.qr-codes', ['tables' => "{$first->id},{$second->id}"]))
+            ->assertOk()->assertSee('S1')->assertSee('S2')->assertDontSee('S3');
+    }
+
+    // ---- Behind an HTTPS reverse proxy ----------------------------------
+
+    public function test_a_trusted_proxy_makes_the_app_see_https_and_the_visitors_own_ip(): void
+    {
+        config(['trustedproxy.proxies' => '*']);
+
+        $this->get('/login', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-For' => '203.0.113.7'])
+            ->assertOk()
+            ->assertHeader('Strict-Transport-Security');
+
+        $this->assertTrue(request()->secure());
+        $this->assertSame('203.0.113.7', request()->ip());
+    }
+
+    public function test_forwarded_headers_from_an_untrusted_source_are_ignored(): void
+    {
+        config(['trustedproxy.proxies' => null]);
+
+        $this->get('/login', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-For' => '203.0.113.7'])
+            ->assertOk()
+            ->assertHeaderMissing('Strict-Transport-Security');
+
+        $this->assertNotSame('203.0.113.7', request()->ip());
     }
 
     // ---- Scanning -------------------------------------------------------
