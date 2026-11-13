@@ -151,20 +151,14 @@ Production has no demo accounts. Create the platform admin once:
 php artisan platform:create-admin you@example.com
 ```
 
-### Print QR codes from the real address
-
-A QR code contains the address the print page was opened from. Codes printed
-while you browse `http://localhost:8000` point at localhost and will not work
-on a guest's phone. Print the codes you put on tables from the production
-`https://` address.
-
 ### Settings to change in `.env` for production
 
 | Key | Value |
 | --- | --- |
 | `APP_ENV` | `production` |
 | `APP_DEBUG` | `false` |
-| `APP_URL` | Your `https://` address |
+| `APP_URL` | Your `https://` address. QR codes are built from it, so set it before printing any. |
+| `TRUSTED_PROXIES` | The address of the HTTPS reverse proxy in front of the app (or `*`, see below) |
 | `SESSION_SECURE_COOKIE` | `true` |
 | `DB_PASSWORD` | A strong password |
 
@@ -187,9 +181,13 @@ docker compose exec app php artisan platform:create-admin you@example.com
 The container refuses to start while `APP_KEY` is empty. After changing
 `.env`, run `docker compose up -d` again so the new values are picked up.
 
-The site listens on port 8080 (`APP_PORT` in `.env` changes it). Put it
-behind a reverse proxy that terminates HTTPS, such as Caddy or nginx with
-Let's Encrypt.
+The site listens on `127.0.0.1:8080` only (`APP_PORT` in `.env` changes the
+port). Put a reverse proxy that terminates HTTPS in front of it on the same
+server, such as Caddy or nginx with Let's Encrypt, and set
+`TRUSTED_PROXIES=*` in `.env`. That is safe in this setup because nothing
+but that proxy can reach the port. Without it the app believes every request
+is plain http from one address: no HSTS header, and all visitors share one
+rate limit.
 
 The Docker files have not been run yet: the environment this step was built
 in has no Docker. Treat them as a first draft until the operations step.
