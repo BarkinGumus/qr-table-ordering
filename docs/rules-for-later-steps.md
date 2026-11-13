@@ -3,7 +3,7 @@
 Found while reviewing the database step. Each is a rule for code that does not
 exist yet; tick it off in the step that implements it.
 
-## Never trust an ID sent by the browser (steps 3 to 7)
+## Never trust an ID sent by the browser (steps 4 to 7; done for tables in step 3)
 
 The database checks that `dining_table_id`, `table_session_id`, `category_id`
 and `product_id` exist. It does not check that they belong to the same
@@ -33,7 +33,7 @@ Rule: take the next number inside the order transaction while holding a row
 lock on the restaurant (`lockForUpdate()`), with a test that the unique index
 is the last line of defence.
 
-## Platform admin has no restaurant (steps 3, 4, 8)
+## Platform admin has no restaurant (steps 4, 8; done for tables in step 3)
 
 A platform admin's requests have no current restaurant, so any query on a
 restaurant-owned model throws.
